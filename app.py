@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-
+from datetime import date
 
 db = SQLAlchemy()
 app = Flask(__name__)
@@ -9,10 +9,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://trello_dev:spameg
 
 db.init_app(app)
 
-print(db.__dict__)
-
 
 class Card(db.Model):
+    __tablename__ = 'cards'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(250))
     description = db.Column(db.Text())
@@ -21,6 +20,7 @@ class Card(db.Model):
 
 @app.cli.command('create')
 def create_db():
+    # db.drop_all()
     db.create_all()
     print('Tables created successfully')
 
@@ -29,6 +29,21 @@ def create_db():
 def create_db():
     db.drop_all()
     print('Tables dropped successfully')
+
+
+@app.cli.command('seed')
+def seed_db():
+    # Truncate table
+    db.session.query(Card).delete()
+    # Create an instance of the Card model in memory
+    # Add the card to the session (transaction)
+    db.session.add(Card(
+        title='Start the project',
+        description='Create an ERD',
+        date_created=date.today()
+    ))
+    # Commit the transaction to the dabase
+    db.session.commit()
 
 
 @app.route('/')
