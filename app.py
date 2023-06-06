@@ -1,8 +1,9 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
 from flask_marshmallow import Marshmallow
 import json
+from flask_bcrypt import Bcrypt
 
 db = SQLAlchemy()
 app = Flask(__name__)
@@ -13,6 +14,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://trello_dev:spameg
 
 db.init_app(app)
 ma = Marshmallow(app)
+bcrypt = Bcrypt(app)
 
 
 class User(db.Model):
@@ -26,7 +28,7 @@ class User(db.Model):
 
 class UserSchema(ma.Schema):
     class Meta:
-        fields = ('name', 'email', 'is_admin')
+        fields = ('name', 'email', 'password', 'is_admin')
 
 
 class Card(db.Model):
@@ -66,13 +68,14 @@ def seed_db():
     users = [
         User(
             email='admin@spam.com',
-            password='spinynorm',
+            password=bcrypt.generate_password_hash('spinynorm').decode('utf8'),
             is_admin=True
         ),
         User(
             name='John Cleese',
             email='cleese@spam.com',
-            password='tisbutascratch'
+            password=bcrypt.generate_password_hash(
+                'tisbutascratch').decode('utf8')
         )
     ]
     cards = [
@@ -111,6 +114,21 @@ def index():
     return 'Hello World!'
 
 
+@app.route('/register', methods=['POST'])
+def register():
+    user_info = UserSchema().load(request.json)
+    user = User(
+        email=user_info['email'],
+        password=bcrypt.generate_password_hash(
+            user_info['password']).decode('utf8'),
+        name=user_info['name']
+    )
+
+    db.session.add(user)
+    db.session.commit()
+
+    return UserSchema(exclude=['password']).dump(user), 201
+
 # @app.route("/cards", methods=["GET"])
 # def get_cards():
     # get all the cards from the database table
@@ -118,6 +136,7 @@ def index():
     # return the data in JSON format
   #  result = cards_schema.dump(cards_list)
   #  return jsonify(result)
+
 
 @app.route("/cards")
 def all_cards():
