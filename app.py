@@ -5,7 +5,8 @@ from flask_marshmallow import Marshmallow
 import json
 from flask_bcrypt import Bcrypt
 from sqlalchemy.exc import IntegrityError
-from flask_jwt_extended import JWTManager, create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import timedelta
 
 
 db = SQLAlchemy()
@@ -152,7 +153,8 @@ def login():
         user = db.session.scalar(stmt)
 
         if user and bcrypt.check_password_hash(user.password, request.json['password']):
-            token = create_access_token(identity=user.email)
+            token = create_access_token(
+                identity=user.email, expires_delta=timedelta(days=1))
             return {'token': token, 'user': UserSchema(exclude=['password']).dump(user)}
         else:
             return {'error': 'Invalid email address or password'}, 401
@@ -161,8 +163,14 @@ def login():
 
 
 @app.route("/cards")
+@jwt_required()
 def all_cards():
-    # select * from cards;
+    user_email = get_jwt_identity()
+    stmt = db.select(User).filter_by(email=user_email)
+    user = db.session.scalar(stmt)
+    if not user.is_admin:
+        return {'error': 'You must be an Admin'}, 401  # forbidden
+        # select * from cards;
     stmt = db.select(Card).order_by(Card.status.desc())
     cards = db.session.scalars(stmt).all()
     return CardSchema(many=True).dump(cards)
