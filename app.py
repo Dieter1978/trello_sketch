@@ -5,17 +5,21 @@ from flask_marshmallow import Marshmallow
 import json
 from flask_bcrypt import Bcrypt
 from sqlalchemy.exc import IntegrityError
+from flask_jwt_extended import JWTManager, create_access_token
+
 
 db = SQLAlchemy()
 app = Flask(__name__)
 
 
-app.config['JSON_SORT_KEYS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://trello_dev:spameggs123@localhost:5432/trello'
+app.config['JWT_SECRET_KEY'] = 'Ministry of Silly Walks'
+
 
 db.init_app(app)
 ma = Marshmallow(app)
 bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
 
 
 class User(db.Model):
@@ -148,7 +152,8 @@ def login():
         user = db.session.scalar(stmt)
 
         if user and bcrypt.check_password_hash(user.password, request.json['password']):
-            return UserSchema(exclude=['password']).dump(user)
+            token = create_access_token(identity=user.email)
+            return {'token': token, 'user': UserSchema(exclude=['password']).dump(user)}
         else:
             return {'error': 'Invalid email address or password'}, 401
     except KeyError:
