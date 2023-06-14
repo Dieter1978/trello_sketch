@@ -17,6 +17,13 @@ def admin_required():
         abort(401)  # Unauthorised
 
 
+@auth_bp.route('/users')
+def all_users():
+    stmt = db.select(User)
+    users = db.session.scalars(stmt)
+    return UserSchema(many=True).dump(users)
+
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
     try:
