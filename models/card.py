@@ -12,10 +12,14 @@ class Card(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = db.relationship('User', back_populates='cards')
 
+    comments = db.relationship('Comment', back_populates='card')
+
 
 class CardSchema(ma.Schema):
     # This will serialize the user field as JSON
     user = fields.Nested('UserSchema', exclude=['password', 'cards'])
+    comments = fields.List(fields.Nested(
+        'CommentSchema', exclude=['card', 'id']))
 
     class Meta:
         # Fields to expose

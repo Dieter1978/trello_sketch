@@ -1,7 +1,7 @@
 from flask import Blueprint, request, abort
 from models.card import Card, CardSchema
 from init import db
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from blueprints.auth_bp import admin_required
 from datetime import date
 
@@ -33,9 +33,9 @@ def one_card(card_id):
         # no card comes back with 404 Not Found
         return {"Error": "No card with this id was found"}, 404
 
+
 # Create a new card
-
-
+# not to avoid JWT token for invalid user it should call to the database and check if the user exists
 @cards_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_card():
@@ -45,15 +45,14 @@ def create_card():
         description=card_info['description'],
         status=card_info['status'],
         date_created=date.today(),
-        user_id=card_info['user_id']
+        user_id=get_jwt_identity()
     )
     db.session.add(card)
     db.session.commit()
     return CardSchema().dump(card), 201
 
+
 # Update a card
-
-
 @cards_bp.route('/<int:card_id>', methods=['PUT', 'PATCH'])
 @jwt_required()
 def update_card(card_id):
